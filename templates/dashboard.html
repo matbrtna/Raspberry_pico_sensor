@@ -1,0 +1,44 @@
+
+{% set last_temperature = temperatures[0] %}
+<p class="text-center">Last measuring was at {{last_temperature.timestamp}} with value {{last_temperature.temp}} °C</p>
+
+<div class="m-4">
+
+  <canvas id="lineChart" class="chartjs-render-monitor " ></canvas>
+
+</div>
+ <script src="../static/graf.js"></script>
+<link href="../static/style.css" rel="stylesheet">
+<br>
+
+
+<div class="m-3">
+<table class="table table-striped" id="temp_table">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Timestamp</th>
+      <th scope="col">Temperature</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody">
+    {% for t in temperatures %}
+    <tr>
+        <th scope="row">{{loop.index}}</th>
+        <td>{{t.timestamp}}</td>
+        <td>{{t.temp}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+         <div class="m-3">
+        <input type="range" min="2" max="20" value="10" id="dataCountSlider">
+        <label for="dataCountSlider">Number of Data Points: <span id="dataCountValue">10</span></label>
+    </div>
+     <form id="dataForm" class="form-inline mt-3" action="/delete" method="post">
+            <label for="numRows" class="mr-sm-2">Smazat nejstarší záznamy:</label>
+            <input type="number" id="numRows" name="numRows" min="1" value="1" class="form-control mr-sm-2">
+            <button type="submit" class="btn btn-danger mt-2">Smazat</button>
+     </form>
+</div>
+

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+ <div class="jumbotron text-center">
+  <h1>Welcome to NSI Page {% if username%} you are logged as: {{username}} {% else %} you are not logged in {% endif %} </h1>
+</div>
+
+{% include 'dashboard.html' %}
+{% endblock %}
