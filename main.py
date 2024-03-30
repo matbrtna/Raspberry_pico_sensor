@@ -1,26 +1,12 @@
 from flask import *
 import json
 from flask_session import Session
+from api_routes import api
 
 app = Flask(__name__)
 app.secret_key = "mykey123"
+app.register_blueprint(api)
 
-
-data = [
-    {"timestamp": "1.1.2024 12:00", "temp": 25.1},
-    {"timestamp": "1.1.2024 12:05", "temp": 24.2},
-    {"timestamp": "1.1.2024 12:10", "temp": 23.6},
-    {"timestamp": "1.1.2024 12:15", "temp": 25.0},
-    {"timestamp": "1.1.2024 12:20", "temp": 25.2},
-    {"timestamp": "1.1.2024 12:25", "temp": 25.5},
-    {"timestamp": "1.1.2024 12:30", "temp": 25.8},
-    {"timestamp": "1.1.2024 12:35", "temp": 26.1},
-    {"timestamp": "1.1.2024 12:40", "temp": 26.2},
-    {"timestamp": "1.1.2024 12:45", "temp": 25.5},
-    {"timestamp": "1.1.2024 12:50", "temp": 25.3},
-    {"timestamp": "1.1.2024 12:55", "temp": 25.2},
-    {"timestamp": "1.1.2024 13:00", "temp": 24.9},
-]
 
 # users = [{
 #     "username": "admin", "password": "admin", "mail": "mail@example.com"
@@ -34,18 +20,14 @@ def add_users(users):
 def load_users():
     with open("users.json", "r") as file:
         return json.load(file)
+    
 
+def copy_config_data():
+    with open("config_data.json","r") as file:
+        data= json.load(file)
+    with open("data.json", "w") as file:
+        json.dump(data, file, indent=4)
 
-@app.route('/delete', methods=['POST'])
-def delete_data():
-    rows = int(request.form.get('numRows'))
-    if rows<len(data):
-        for i in range(rows):
-            data.pop()
-        # return render_template("home.html",temperatures=data[::-1])
-        return redirect("/")
-    else:
-        return "There will be no data left"
 
 
 @app.route('/logout')
@@ -55,17 +37,9 @@ def logout():
 
 
 
-@app.route('/data')
-def get_data():
-    data_count = int(request.args.get('count', 10))
-
-    return jsonify(data[-data_count::])
-
-
 @app.route('/')
-def index():  # return render_template('home.html')
-    # return redirect(url_for("success"))
-    return render_template('home.html', username=session.get('username'), temperatures=data[::-1])
+def index():  
+    return render_template('home.html', username=session.get('username'), last_temperature=last_temp)
 
 
 
@@ -122,9 +96,14 @@ def login():
             return redirect('/')
     return "Invalid username or password"
 
-@app.route('/success')
-def success():
-    return render_template("home.html", username=session.get('username'), temperatures=data[::-1])
+@app.route('/changed_temp/<S>')
+def change_temp(S):
+    last_temp=S
+    return redirect('/')
 
 if __name__ == '__main__':
+    copy_config_data()
+    with open("data.json", "r") as file:
+        data=json.load(file)
+        last_temp=data[-1]
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)
