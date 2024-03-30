@@ -2,15 +2,32 @@
 document.addEventListener("DOMContentLoaded", function() {
     editGraph();
     updateTable()
+    changeLastTemp()
     document.getElementById("dataCountSlider").addEventListener("input", editGraph)
     document.getElementById("dataCountSlider").addEventListener("input", updateTable);
+    document.getElementById("dataCountSlider").addEventListener("input", changeLastTemp)
+    // document.getElementById("data_delete_button").addEventListener("click",delete_data)
 })
 window.addEventListener("resize",editGraph)
 
 
+
+async function changeLastTemp(){
+    var response= await fetch(`http://127.0.0.1:5000/api/last_data_value`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then()
+    data=await response.json()
+    document.getElementById("last_temp").innerHTML="Last measuring was at "+ data.timestamp+" with value "+ data.temp +" °C"
+}
+
+
+
 async function getData() {
     const dataCount = document.getElementById("dataCountSlider").value
-    let data= await fetch(`http://127.0.0.1:5000/data?count=${dataCount}`, {
+    let data= await fetch(`http://127.0.0.1:5000/api/data?count=${dataCount}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'
@@ -18,6 +35,12 @@ async function getData() {
     }).then()
     return data.json()
 }
+
+// function delete_data(e){
+//     e.preventF
+// }
+
+
 
 async function updateTable() {
     var values=await getData()
