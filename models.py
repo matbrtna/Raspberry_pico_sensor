@@ -3,7 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 db=SQLAlchemy()
 
 class Data(db.Model):
-    timestamp = db.Column(db.DateTime, primary_key=True)
+    id=db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.String(32), nullable=False)
     temp = db.Column(db.Float, nullable=False)
 
     def __init__(self,timestamp,temp):

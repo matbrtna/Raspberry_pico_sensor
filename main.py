@@ -127,8 +127,8 @@ if __name__ == '__main__':
     #     data=json.load(file)
     #     last_temp=data[-1]
    
-    # with app.app_context():
-    #     db.create_all()
+    with app.app_context():
+        db.create_all()
     #     for i in range(4):
     #         sleep
     #         # timestamp = datetime.now().strftime('%d.%m.%Y %H:%M')
