@@ -19,7 +19,8 @@ async function changeLastTemp(){
             'Content-Type': 'application/json'
         }
     }).then()
-    data=await response.json()
+    var data=await response.json()
+    console.log(data.timestamp)
     document.getElementById("last_temp").innerHTML="Last measuring was at "+ data.timestamp+" with value "+ data.temp +" °C"
 }
 
