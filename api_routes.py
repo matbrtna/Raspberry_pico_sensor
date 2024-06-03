@@ -1,6 +1,7 @@
 from flask import  *
 from datetime import datetime
 import random
+from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import db, Data
@@ -41,7 +42,7 @@ def get_data():
 def add_data():
     timestamp = datetime.now().strftime('%d.%m.%Y %H:%M')
     # timestamp = datetime.now()
-    temp=random.uniform(25.3, 26.3) 
+    temp=random.uniform(21.3, 26.5)
     formatted_temp = f"{temp:.1f}"
     data=Data(timestamp,formatted_temp)
     db.session.add(data)
@@ -49,10 +50,40 @@ def add_data():
     db.session.close()
     return redirect('/')
 
+@api.route('/api/no_data_recieved', methods=['POST',"GET"])
+def get_error():
+    return redirect('/error')
 
 
 
 
+
+@api.route('/api/send_data_from_mqtt',methods=['GET','POST'])
+def write_mqtt_data():
+    request_data = request.json
+    temp = request_data.get('temp')
+    timestamp = datetime.now().strftime('%d.%m.%Y %H:%M')
+    data = Data(timestamp, temp)
+    db.session.add(data)
+    db.session.commit()
+    db.session.close()
+    session['last_read']="MQTT"
+    return redirect('/mqtt')
+
+
+@api.route('/api/send_data_from_serial',methods=['GET','POST'])
+def write_serial_data():
+    request_data = request.json
+    temp = request_data.get('temp')
+    # session.pop("error",None)
+    #session['error']=False
+    timestamp = datetime.now().strftime('%d.%m.%Y %H:%M')
+    data = Data(timestamp, temp)
+    db.session.add(data)
+    db.session.commit()
+    db.session.close()
+    session['last_read'] = "UART"
+    return redirect('/serial')
 
 # @api.route('/api/users', methods=['GET'])
 # def get_users():

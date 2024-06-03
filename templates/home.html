@@ -3,7 +3,9 @@
 
 
  <div class="jumbotron text-center">
-  <h1>Welcome to NSI Page {% if username%} you are logged as: {{username}} {% else %} you are not logged in {% endif %} </h1>
+  <h1>Welcome to NSI Page {% if username%} you are logged as: {{username}} {% else %} you are not logged in {% endif %}  </h1>
+    {% if last_read %}<h1> Last used interface: {{last_read}} {% endif %}</h1>
+  {% if error %} <h1>No data recieved for over 20 seconds</h1> {% endif %}
 </div>
 
 {% include 'dashboard.html' %}
