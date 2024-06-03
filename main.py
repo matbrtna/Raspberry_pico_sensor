@@ -9,9 +9,13 @@ from models import db, User, Data
 from datetime import datetime
 from time import sleep
 import requests
+import serial
+
 
 app = Flask(__name__)
 app.secret_key = "mykey123"
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
 
 db_file=os.path.join(os.getcwd(), 'nsi.db')
@@ -24,7 +28,8 @@ app.register_blueprint(api)
 
 db.init_app(app)
 
-
+error=None
+last_read=None
 
 
 def copy_config_data():
@@ -50,10 +55,27 @@ def logout():
 
 @app.route('/')
 def index():  
-    return render_template('home.html', username=session.get('username'), last_temperature=last_temp)
+    return render_template('home.html', username=session.get('username'), last_temperature=last_temp,last_read=last_read,error=session.get('error'))
 
+@app.route('/error')
+def generate_error():
+    global error
+    error=True
+    return redirect('/')
 
+@app.route('/mqtt')
+def mqtt_session():
+    global last_read,error
+    error=None
+    last_read="MQTT"
+    return redirect('/')
 
+@app.route('/serial')
+def serial_session():
+    global last_read, error
+    error=None
+    last_read="Serial"
+    return redirect('/')
 
 
 @app.route('/register', methods=['GET'])
@@ -112,7 +134,32 @@ def login():
         return "Invalid username or password"
     
 
+def read_values():
+    print("Reading values")
+    while True:
+        try:
+            ser = serial.Serial(
+                port='/dev/ttyACM0',  # Přizpůsob sériový port
+                baudrate=115200,
+                # Rychlost komunikace (musí odpovídat nastavení na Raspberry Pi Pico)           # Timeout v sekundách pro čtení
+            )
 
+            data = ser.readline().decode()
+            print(data)
+            add_to_db(data)
+            sleep(5)
+        except:
+            print("Unable to read")
+            break
+
+
+def add_to_db(temp):
+    timestamp = datetime.now().strftime('%d.%m.%Y %H:%M')
+    data = Data(timestamp, temp)
+    db.session.add(data)
+    db.session.commit()
+    db.session.close()
+    last_temp = data['value']
 
 # @app.route('/changed_temp/<S>')
 # def change_temp(S):
