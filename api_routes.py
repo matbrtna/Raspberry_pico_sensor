@@ -11,7 +11,7 @@ from models import db, Data
 api = Blueprint('api', __name__)
 
 
-
+ 
         
 
 @api.route('/api/last_data_value',methods=['GET'])
