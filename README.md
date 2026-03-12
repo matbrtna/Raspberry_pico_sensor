@@ -1,93 +1,150 @@
-# NSI - brtnamat
+# Raspberry Pi Pico Temperature Sensor
 
+An IoT temperature monitoring system that collects temperature data from a Raspberry Pi Pico and displays it on a web dashboard with real-time charts and tables.
 
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Architecture
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.fel.cvut.cz/brtnamat/nsi-brtnamat.git
-git branch -M main
-git push -uf origin main
+Raspberry Pi Pico          Host Computer                  Web Browser
++-----------------+        +------------------------+     +----------------+
+| MicroPython     |  UART  | serial_read.py         |     |                |
+| Generate temp   |------->| or                     |     | Dashboard      |
+| readings        |  MQTT  | subscriber_read.py     |     | - Line chart   |
++-----------------+        +----------+-------------+     | - Data table   |
+                                      | HTTP POST         | - Controls     |
+                                      v                   +-------+--------+
+                           +----------+-------------+             |
+                           | Flask Web Server        |  HTTP GET   |
+                           | (main.py + api_routes)  |<------------+
+                           +----------+-------------+
+                                      |
+                                      v
+                           +----------+-------------+
+                           | SQLite Database (nsi.db)|
+                           | - Temperature records   |
+                           | - User accounts         |
+                           +------------------------+
 ```
 
-## Integrate with your tools
+## Project Structure
 
-- [ ] [Set up project integrations](https://gitlab.fel.cvut.cz/brtnamat/nsi-brtnamat/-/settings/integrations)
+```
+.
+├── main.py                  # Flask web server entry point
+├── api_routes.py            # REST API endpoints (Blueprint)
+├── models.py                # SQLAlchemy database models (Data, User)
+├── mqqt_read.py             # Legacy MQTT reader (Adafruit IO, unused)
+├── publisher_test.py        # Test script to publish MQTT messages
+├── pico/                    # Raspberry Pi Pico firmware (MicroPython)
+│   ├── main.py              # Pico main program (UART or MQTT mode)
+│   ├── connection.py        # WiFi connection helper
+│   └── simple.py            # MQTT client library (umqtt.simple)
+├── data_reading/            # Host-side data collection scripts
+│   ├── serial_read.py       # Reads temperature from USB serial port
+│   └── subscriber_read.py   # Reads temperature from MQTT broker
+├── templates/               # Jinja2 HTML templates
+│   ├── base.html            # Base layout (Bootstrap 5 + Chart.js)
+│   ├── home.html            # Homepage with dashboard
+│   ├── dashboard.html       # Chart, table, and controls
+│   ├── navbar.html          # Navigation bar
+│   ├── login.html           # Login form
+│   └── register.html        # Registration form
+└── static/
+    ├── graf.js              # Dashboard JavaScript (chart + table logic)
+    └── style.css            # Custom styles
+```
 
-## Collaborate with your team
+## Requirements
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### Host Computer (Server)
 
-## Test and Deploy
+- Python 3
+- Flask
+- Flask-Session
+- Flask-SQLAlchemy
+- pyserial (for serial/UART mode)
+- paho-mqtt (for MQTT mode)
 
-Use the built-in continuous integration in GitLab.
+### Raspberry Pi Pico
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+- MicroPython firmware
+- Raspberry Pi Pico or Pico W (Pico W required for MQTT/WiFi mode)
 
-***
+## Setup
 
-# Editing this README
+### 1. Install Python Dependencies
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```bash
+pip install flask flask-session flask-sqlalchemy pyserial paho-mqtt
+```
 
-## Suggestions for a good README
+### 2. Flash the Pico
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Copy the files from the `pico/` directory onto the Raspberry Pi Pico running MicroPython:
+- `main.py`
+- `connection.py`
+- `simple.py`
 
-## Name
-Choose a self-explaining name for your project.
+By default, the Pico runs in **serial (UART) mode**, sending temperature data over USB at 115200 baud.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 3. Start the Flask Server
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+python main.py
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The server starts on `http://0.0.0.0:5000`.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### 4. Start a Data Reader
+
+Choose one depending on your communication method:
+
+**Serial (UART) mode** - connect the Pico via USB, then:
+```bash
+python data_reading/serial_read.py
+```
+
+**MQTT mode** - requires an MQTT broker (e.g., Mosquitto) running on localhost:
+```bash
+python data_reading/subscriber_read.py
+```
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+1. Open `http://localhost:5000` in a browser.
+2. Register an account or log in.
+3. The dashboard displays:
+   - The most recent temperature reading and timestamp
+   - A line chart of temperature over time
+   - A table of recent temperature records
+4. Use the slider to adjust how many data points are shown (2-30).
+5. Use the "Add random value" button to insert test data.
+6. Use the delete form to remove the oldest records.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## API Endpoints
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+| Method | Endpoint                     | Description                                  |
+|--------|------------------------------|----------------------------------------------|
+| GET    | `/api/last_data_value`       | Returns the most recent temperature record   |
+| GET    | `/api/data?count=N`          | Returns the last N temperature records       |
+| POST   | `/api/data`                  | Adds a random temperature record             |
+| POST   | `/api/send_data_from_mqtt`   | Receives temperature data from MQTT reader   |
+| POST   | `/api/send_data_from_serial` | Receives temperature data from serial reader |
+| POST   | `/api/delete_data`           | Deletes the oldest N records                 |
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## Data Flow
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+1. The **Raspberry Pi Pico** generates temperature readings (simulated, 22-26 C) every 10 seconds.
+2. Data is transmitted via **UART** (USB serial) or **MQTT** to the host computer.
+3. The **data reader script** (`serial_read.py` or `subscriber_read.py`) forwards the data to the Flask API via HTTP POST.
+4. The **Flask server** stores the data in a **SQLite database**.
+5. The **web dashboard** fetches data from the API and renders it using **Chart.js**.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Testing Without Hardware
 
-## License
-For open source projects, say how it is licensed.
+You can test the MQTT pipeline without a physical Pico:
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+1. Install and start an MQTT broker (e.g., Mosquitto) on localhost.
+2. Start the Flask server: `python main.py`
+3. Start the MQTT subscriber: `python data_reading/subscriber_read.py`
+4. Publish a test message: `python publisher_test.py`

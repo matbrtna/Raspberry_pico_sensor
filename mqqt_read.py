@@ -1,3 +1,14 @@
+"""
+MQTT Reader Module (Legacy / Unused)
+
+This module was intended to subscribe to an Adafruit IO MQTT broker and receive
+temperature data. It contains commented-out code for connecting to the Adafruit IO
+broker and listening for messages on the "brtnamat/feeds/nsi" topic.
+
+Note: This file is currently inactive. The active MQTT subscriber implementation
+is in data_reading/subscriber_read.py, which connects to a local MQTT broker.
+"""
+
 import paho.mqtt.client as mqtt
 from Adafruit_IO import Client,Feed
 import time
