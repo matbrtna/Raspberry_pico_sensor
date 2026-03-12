@@ -75,7 +75,7 @@ Raspberry Pi Pico          Host Computer                  Web Browser
 ### 1. Install Python Dependencies
 
 ```bash
-pip install flask flask-session flask-sqlalchemy pyserial paho-mqtt
+pip install -r requirements.txt
 ```
 
 ### 2. Flash the Pico
