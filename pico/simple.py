@@ -1,9 +1,24 @@
+"""
+MicroPython MQTT Client Library (umqtt.simple)
+
+A lightweight MQTT client implementation for MicroPython, designed to run on
+resource-constrained microcontrollers like the Raspberry Pi Pico. Implements
+the MQTT v3.1.1 protocol with support for:
+- Connect/disconnect with optional authentication (username/password)
+- Publish messages with QoS 0 and QoS 1
+- Subscribe to topics with message callbacks
+- Last Will and Testament (LWT) messages
+- SSL/TLS encrypted connections
+- Keep-alive ping mechanism
+"""
+
 import usocket as socket
 import ustruct as struct
 from ubinascii import hexlify
 
 
 class MQTTException(Exception):
+    """Exception raised for MQTT protocol errors (e.g., connection refused)."""
     pass
 
 
@@ -18,6 +33,18 @@ class MQTTClient:
         keepalive=0,
         ssl=None,
     ):
+        """
+        Initializes the MQTT client.
+
+        Args:
+            client_id: Unique identifier for this client.
+            server: MQTT broker hostname or IP address.
+            port: Broker port (default: 8883 for SSL, 1883 for plain).
+            user: Username for broker authentication (optional).
+            password: Password for broker authentication (optional).
+            keepalive: Keep-alive interval in seconds (0 = disabled).
+            ssl: SSL context for encrypted connections (optional).
+        """
         if port == 0:
             port = 8883 if ssl else 1883
         self.client_id = client_id
@@ -36,6 +63,7 @@ class MQTTClient:
         self.lw_retain = False
 
     def _send_str(self, s):
+        """Sends a length-prefixed string over the socket (MQTT protocol encoding)."""
         self.sock.write(struct.pack("!H", len(s)))
         self.sock.write(s)
 
@@ -50,6 +78,7 @@ class MQTTClient:
             sh += 7
 
     def set_callback(self, f):
+        """Sets the callback function to be called when a subscribed message is received."""
         self.cb = f
 
     def set_last_will(self, topic, msg, retain=False, qos=0):
@@ -61,6 +90,11 @@ class MQTTClient:
         self.lw_retain = retain
 
     def connect(self, clean_session=True):
+        """
+        Connects to the MQTT broker. Builds and sends the CONNECT packet with
+        optional authentication, keep-alive, and last will configuration.
+        Returns 1 if a previous session exists, 0 otherwise.
+        """
         self.sock = socket.socket()
         addr = socket.getaddrinfo(self.server, self.port)[0][-1]
         self.sock.connect(addr)
@@ -107,10 +141,12 @@ class MQTTClient:
         return resp[2] & 1
 
     def disconnect(self):
+        """Sends a DISCONNECT packet and closes the socket connection."""
         self.sock.write(b"\xe0\0")
         self.sock.close()
 
     def ping(self):
+        """Sends a PINGREQ packet to keep the connection alive."""
         self.sock.write(b"\xc0\0")
 
     def publish(self, topic, msg, retain=False, qos=0):
@@ -149,6 +185,10 @@ class MQTTClient:
             assert 0
 
     def subscribe(self, topic, qos=0):
+        """
+        Subscribes to a topic on the MQTT broker. A callback must be set via
+        set_callback() before calling this method. Blocks until SUBACK is received.
+        """
         assert self.cb is not None, "Subscribe callback is not set"
         pkt = bytearray(b"\x82\0\0\0")
         self.pid += 1

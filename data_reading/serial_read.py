@@ -1,3 +1,15 @@
+"""
+Serial Port Reader Module
+
+Reads temperature data from the Raspberry Pi Pico via a USB serial (UART) connection
+on /dev/ttyACM0 at 115200 baud. Each temperature value read from the serial port
+is forwarded to the Flask web server's API endpoint for storage in the database.
+
+If no data is received for 3 consecutive read attempts, an error notification
+is sent to the server. This script should be run as a separate process alongside
+the Flask web server.
+"""
+
 import serial
 import sys
 import time
@@ -7,18 +19,25 @@ import sqlite3
 import json
 import requests
 
+# Direct database connection (used by the commented-out add_to_db function)
 conn = sqlite3.connect('nsi.db')
 cursor = conn.cursor()
 
 
 def read_values():
+    """
+    Continuously reads temperature values from the serial port every 5 seconds.
+    Each successful reading is sent as JSON to the Flask API endpoint
+    /api/send_data_from_serial. Tracks consecutive empty reads and triggers
+    an error notification after 3 failed attempts.
+    """
     no_input = 0
     requests.get('http://localhost:5000/error')
     while True:
         # try:
         time.sleep(5)
         ser = serial.Serial(
-            port='/dev/ttyACM0',  # Přizpůsob sériový port
+            port='/dev/ttyACM0',  # Serial port for the Raspberry Pi Pico
             baudrate=115200,
         )
 

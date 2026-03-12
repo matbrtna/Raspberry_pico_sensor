@@ -1,3 +1,15 @@
+"""
+Main Flask Application Module
+
+This is the entry point for the Raspberry Pi Pico temperature sensor web application.
+It initializes the Flask server, configures the database, sets up user authentication
+(login, register, logout), and defines the core HTTP routes.
+
+The application serves as a central hub that receives temperature data from either
+a serial (UART) connection or an MQTT broker, stores it in a SQLite database,
+and displays it on a web dashboard with charts and tables.
+"""
+
 from flask import *
 import json
 from flask_session import Session
@@ -12,27 +24,33 @@ import requests
 import serial
 
 
+# Initialize Flask application and configure server-side sessions
 app = Flask(__name__)
 app.secret_key = "trynewone123"
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-
+# Configure SQLite database path using the current working directory
 db_file=os.path.join(os.getcwd(), 'nsi.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_file}'
 
 
-
+# Register the API blueprint that contains all REST API endpoints
 app.register_blueprint(api)
 
-
+# Initialize SQLAlchemy with the Flask app
 db.init_app(app)
 
+# Global state variables to track errors and the last data source used (MQTT or Serial)
 error=None
 last_read=None
 
 
 def copy_config_data():
+    """
+    Resets the data.json file by copying contents from the config_data.json template.
+    This is called at startup to initialize the data file with default values.
+    """
     with open("config_data.json","r") as file:
         data= json.load(file)
     with open("data.json", "w") as file:
@@ -41,6 +59,15 @@ def copy_config_data():
 
 
 def hash_password(password):
+    """
+    Hashes a plaintext password using SHA-256.
+
+    Args:
+        password (str): The plaintext password to hash.
+
+    Returns:
+        str: The hexadecimal SHA-256 hash of the password.
+    """
     hashed_password = hashlib.sha256(password.encode()).hexdigest()
     return hashed_password
 
@@ -48,23 +75,33 @@ def hash_password(password):
 
 @app.route('/logout')
 def logout():
+    """Logs out the current user by removing their username from the session."""
     session.pop('username', None)
     return redirect('/')
 
 
 
 @app.route('/')
-def index():  
+def index():
+    """
+    Renders the homepage with the current user's info, last temperature reading,
+    the last data source used (MQTT/Serial), and any error notifications.
+    """
     return render_template('home.html', username=session.get('username'), last_temperature=last_temp,last_read=last_read,error=session.get('error'))
 
 @app.route('/error')
 def generate_error():
+    """Sets the global error flag and redirects to the homepage to display an error notification."""
     global error
     error=True
     return redirect('/')
 
 @app.route('/mqtt')
 def mqtt_session():
+    """
+    Sets the last data source to MQTT, clears any errors,
+    and redirects to the homepage.
+    """
     global last_read,error
     error=None
     last_read="MQTT"
@@ -72,6 +109,10 @@ def mqtt_session():
 
 @app.route('/serial')
 def serial_session():
+    """
+    Sets the last data source to Serial, clears any errors,
+    and redirects to the homepage.
+    """
     global last_read, error
     error=None
     last_read="Serial"
@@ -80,11 +121,18 @@ def serial_session():
 
 @app.route('/register', methods=['GET'])
 def get_register():
+    """Renders the user registration form."""
     return render_template("register.html")
 
 
 @app.route('/register', methods=['POST'])
 def register():
+    """
+    Handles user registration. Validates form input (username length >= 4,
+    password length >= 5, passwords match, unique email and username),
+    creates a new User record in the database, and logs the user in.
+    Returns an error message string if validation fails.
+    """
     formUsername = request.form.get('username')
     formPassword = request.form.get('password')
     formPassword2 = request.form.get('password2')
@@ -116,12 +164,18 @@ def register():
 
 @app.route('/login', methods=['GET'])
 def get_login():
+    """Renders the login form."""
     return render_template("login.html")
 
 
 
 @app.route('/login', methods=['POST'])
 def login():
+    """
+    Handles user login. Verifies the username and hashed password against
+    the database. On success, stores the username in the session and redirects
+    to the homepage. Returns an error message if credentials are invalid.
+    """
     formUsername = request.form.get('username')
     formPassword = request.form.get('password')
     if not formPassword or not formUsername:
@@ -135,6 +189,11 @@ def login():
     
 
 def read_values():
+    """
+    Continuously reads temperature values from the serial port (/dev/ttyACM0)
+    connected to the Raspberry Pi Pico. Each reading is stored in the database.
+    Stops if the serial connection fails.
+    """
     print("Reading values")
     while True:
         try:
@@ -154,6 +213,13 @@ def read_values():
 
 
 def add_to_db(temp):
+    """
+    Creates a new Data record with the given temperature value and current
+    timestamp, then saves it to the database.
+
+    Args:
+        temp: The temperature value to store.
+    """
     timestamp = datetime.now().strftime('%d.%m.%Y %H:%M')
     data = Data(timestamp, temp)
     db.session.add(data)
