@@ -1,0 +1,49 @@
+
+
+<p class="text-center" id="last_temp">Last measuring was at {{last_temperature.timestamp}} with value {{last_temperature.temp}} °C ></p>
+
+<div class="m-4">
+
+  <canvas id="lineChart" class="chartjs-render-monitor " ></canvas>
+
+</div>
+
+<script src="../static/graf.js"></script>
+<link href="../static/style.css" rel="stylesheet">
+
+<br>
+
+
+<div class="m-3">
+    <table class="table table-striped" id="temp_table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Timestamp</th>
+          <th scope="col">Temperature</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        {% for t in temperatures %}
+        <tr>
+            <th scope="row">{{loop.index}}</th>
+            <td>{{t.timestamp}}</td>
+            <td>{{t.temp}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class=" m-3">
+        <input type="range" class="w-50" min="2" max="30" value="10" id="dataCountSlider">
+        <label for="dataCountSlider">Number of Data Points: <span id="dataCountValue">10</span></label>
+    </div>
+     <form id="dataForm" class="form-inline mt-3 m" action="/api/delete_data" method="post">
+        <label for="numRows" class="">Delete oldest records:</label>
+        <input type="number" id="numRows" name="numRows" min="1" value="1" class="form-control mr-sm-2">
+        <button type="submit" id="data_delete_button" class="btn btn-danger mt-2">Delete</button>
+     </form>
+
+     <form id="dataForm2" class="form-inline mt-3 m" action="/api/data" method="post">
+      <button type="submit" id="data_delete_button" class="btn btn-success mt-2">Add value</button>
+</div>
+
